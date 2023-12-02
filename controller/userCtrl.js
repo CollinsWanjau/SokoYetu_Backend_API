@@ -1,0 +1,114 @@
+const { generateToken } = require('../config/jwtToken');
+const User = require('../models/userModel');
+const asyncHandler = require('express-async-handler')
+
+/**
+ * createUser - Async function to create a new user.
+ *
+ * @param {Object} req - Express request object.
+ * @param {Object} res - Express response object.
+ * @returns {Object} - JSON response containing the newly created user or an error message.
+ * @throws {Error} - Throws an error if the user already exists.
+ */
+const createUser = asyncHandler(async (req, res) => {
+  // Extract email from the request body
+  const email = req.body.email;
+
+  // Check if a user with the provided email already exists
+  const findUser = await User.findOne({email: email});
+
+  if (!findUser) {
+    // If user doesn't exist, create a new User
+    const newUser = new User(req.body);
+    await newUser.save(); // Save the new user to the database
+    res.json(newUser);  // Send the new user as a JSON response
+  } else {
+    throw new Error('User already exists')
+  }
+});
+
+
+/**
+ * Controller function for user login.
+ *
+ * @param {Object} req - Express request object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>} - A Promise that resolves when the function is complete.
+ */
+const loginUserCtrl = asyncHandler(async (req, res) => {
+
+  // Extract email and password from the request body
+  const {email, password} = req.body
+
+  // check if user exists
+  const findUser = await User.findOne({ email })
+
+  // Validate the user's password
+  if(findUser && (await findUser.isPasswordMatched(password))) {
+    // If the password is correct, send a JSON response with user information and a token
+    res.json({
+      _id: findUser?._id,
+      firstname: findUser?.firstname,
+      lastname: findUser?.lastname,
+      email: findUser?.email,
+      mobile: findUser?.mobile,
+      token: generateToken(findUser?._id)
+    })
+  } else {
+     // If the password is incorrect or the user doesn't exist, throw an error
+    throw new Error('Invalid credentials')
+  }
+})
+
+// Update a user
+
+const updateaUser = asyncHandler(async (req, res) => {
+  const { id } = req.params
+  try {
+    const updateUser = await User.findByIdAndUpdate(id, {
+      firstname: req?.body?.firstname,
+      lastname: req?.body?.lastname,
+      email: req?.body?.email,
+      mobile: req?.body?.mobile,
+      
+    }, {new: true,} )
+    res.json(updateUser)
+  } catch (error) {
+    throw new Error(error)
+  }
+})
+// Get all users
+const getallUsers = asyncHandler(async (req, res) => {
+  try {
+    const getUsers = await User.find()
+    res.json(getUsers)
+  } catch {
+    throw new Error(error)
+  }
+})
+
+// Get a single user
+const getaUser = asyncHandler(async (req, res) => {
+  console.log(req.params)
+  const { id } = req.params
+  try {
+    const getaUser = await User.findById(id)
+    res.json({getaUser})
+  } catch (err) {
+    throw new Error(error)
+  }
+})
+
+// Delete a user
+const deleteaUser = asyncHandler(async (req, res) => {
+  console.log(req.params)
+  const { id } = req.params
+  try {
+    const getaUser = await User.findByIdAndDelete(id)
+    res.json({deleteaUser})
+  } catch (err) {
+    throw new Error(error)
+  }
+})
+
+module.exports = { createUser, loginUserCtrl, getallUsers, getaUser, deleteaUser, updateaUser};
