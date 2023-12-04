@@ -9,8 +9,10 @@ const {
     getaUser,       // Function to get a specific user by ID
     deleteaUser,    // Function to delete a user by ID
     updateaUser     // Function to update a user by ID
+    
 } = require('../controller/userCtrl')
 
+const { authMiddleware, isAdmin} = require('../middlewares/authMiddleware')
 /**
  * POST route to register a new user.
  * @route POST /register
@@ -42,7 +44,7 @@ router.get('/all-users', getallUsers)
  * @name getaUser
  * @param {string} id - The ID of the user to retrieve.
  */
-router.get('/:id', getaUser)
+router.get('/:id', getaUser, isAdmin, authMiddleware)
 
 /**
  * DELETE route to delete a user by ID.
@@ -60,7 +62,8 @@ router.delete('/:id', deleteaUser)
  * @name updateaUser
  * @param {string} id - The ID of the user to update.
  */
-router.put("/:id", updateaUser)
+router.put("/edit-user", authMiddleware, updateaUser)
+
 
 // Exporting the router for use in other parts of the application
 module.exports = router
