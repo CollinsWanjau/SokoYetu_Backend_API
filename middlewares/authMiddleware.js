@@ -50,6 +50,22 @@ const authMiddleware = asyncHandler(async (req, res, next) => {
   }
 });
 
+/**
+ * isAdmin - Middleware function to check if the user has admin privileges.
+ *
+ * This function is designed to be used with Express.js as middleware. It assumes that
+ * the request object (`req`) contains a `user` property with an `email` field.
+ * The function queries the database to find a user with the specified email and checks
+ * if the user has the 'admin' role. If the user is not an admin, an error is thrown;
+ * otherwise, the execution continues to the next middleware in the stack.
+ *
+ * @param {Object} req - The Express.js request object.
+ * @param {Object} res - The Express.js response object.
+ * @param {Function} next - The next middleware function in the stack.
+ * @throws {Error} Throws an error with the message 'You are not an admin' if the user
+ *                 does not have admin privileges.
+ * @returns {void} The function either continues to the next middleware or throws an error.
+ */
 const isAdmin = asyncHandler(async (req, res, next) => {
     // Extract the user's email from the request object
     const { email } = req.user
