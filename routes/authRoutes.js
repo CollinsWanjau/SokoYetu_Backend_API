@@ -8,8 +8,9 @@ const {
     getallUsers,    // Function to get all users
     getaUser,       // Function to get a specific user by ID
     deleteaUser,    // Function to delete a user by ID
-    updateaUser     // Function to update a user by ID
-    
+    updateaUser,     // Function to update a user by ID
+    blockUser,
+    unblockUser
 } = require('../controller/userCtrl')
 
 const { authMiddleware, isAdmin} = require('../middlewares/authMiddleware')
@@ -64,6 +65,20 @@ router.delete('/:id', deleteaUser)
  */
 router.put("/edit-user", authMiddleware, updateaUser)
 
+/**
+ * Handles the PUT request to block a user by ID.
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {void}
+ */
+router.put("/block-user/:id", authMiddleware, isAdmin, blockUser)
 
+/**
+ * Handles the PUT request to unblock a user by ID.
+ * @param {Request} req - The HTTP request object.
+ * @param {Response} res - The HTTP response object.
+ * @returns {void}
+ */
+router.put("/unblock-user/:id", authMiddleware, isAdmin, unblockUser)
 // Exporting the router for use in other parts of the application
 module.exports = router
