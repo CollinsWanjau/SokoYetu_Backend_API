@@ -17,9 +17,9 @@ const authMiddleware = asyncHandler(async (req, res, next) => {
   let token;
 
   // Check if the authorization header starts with "Bearer"
-  if (req?.headers?.authorization?.startswith('Bearer')) {
+  if (req?.headers?.authorization?.startsWith('Bearer')) {
     // Split the token from the "Bearer" prefix
-    token = req.headers.authorization.split(' ');
+    token = req.headers.authorization.split(' ')[1];
 
     try {
       // Verify the token using the secret key
@@ -50,4 +50,20 @@ const authMiddleware = asyncHandler(async (req, res, next) => {
   }
 });
 
-module.exports = { authMiddleware };
+const isAdmin = asyncHandler(async (req, res, next) => {
+    // Extract the user's email from the request object
+    const { email } = req.user
+
+    // Check if the user with the provided email exists in the database
+    const adminUser = await User.findOne(email)
+
+    // Verify if the user is an admin
+    if (adminUser.role !== 'admin') {
+        // Throw an error if the user is not an admin
+        throw new Error('You are not an admin')
+    } else {
+        // Proceed to the next middleware or route handler
+        next()
+    }
+})
+module.exports = { authMiddleware, isAdmin};
