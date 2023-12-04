@@ -1,6 +1,7 @@
 const { generateToken } = require('../config/jwtToken');
 const User = require('../models/userModel');
 const asyncHandler = require('express-async-handler')
+const validateMongoDbId = require('../utils/validateMongoDbId')
 
 /**
  * createUser - Async function to create a new user.
@@ -63,7 +64,10 @@ const loginUserCtrl = asyncHandler(async (req, res) => {
 // Update a user
 
 const updateaUser = asyncHandler(async (req, res) => {
-  const { id } = req.params
+  console.log(req.user)
+  // const {id} = req.user
+  const { _id } = req.params
+  validateMongoDbId(_id)
   try {
     const updateUser = await User.findByIdAndUpdate(id, {
       firstname: req?.body?.firstname,
@@ -77,12 +81,28 @@ const updateaUser = asyncHandler(async (req, res) => {
     throw new Error(error)
   }
 })
-// Get all users
+
+/**
+ * getallUsers - Route handler function to retrieve all users.
+ *
+ * This function is designed to handle a GET request to the '/all-users' endpoint.
+ * It is expected to retrieve and return a list of all users in the system.
+ *
+ * @function
+ * @name getallUsers
+ * @param {Object} req - The Express.js request object.
+ * @param {Object} res - The Express.js response object.
+ * @returns {void} The function is responsible for sending the response with the list of users.
+ */
 const getallUsers = asyncHandler(async (req, res) => {
   try {
+    // Implement the logic to retrieve all users from the system
+    // This might involve querying a database or fetching data
     const getUsers = await User.find()
+
+    // Send the retrieved users as the response
     res.json(getUsers)
-  } catch {
+  } catch (err) {
     throw new Error(error)
   }
 })
@@ -91,6 +111,7 @@ const getallUsers = asyncHandler(async (req, res) => {
 const getaUser = asyncHandler(async (req, res) => {
   console.log(req.params)
   const { id } = req.params
+  validateMongoDbId(id)
   try {
     const getaUser = await User.findById(id)
     res.json({getaUser})
@@ -103,6 +124,7 @@ const getaUser = asyncHandler(async (req, res) => {
 const deleteaUser = asyncHandler(async (req, res) => {
   console.log(req.params)
   const { id } = req.params
+  validateMongoDbId(id)
   try {
     const getaUser = await User.findByIdAndDelete(id)
     res.json({deleteaUser})
@@ -111,4 +133,58 @@ const deleteaUser = asyncHandler(async (req, res) => {
   }
 })
 
-module.exports = { createUser, loginUserCtrl, getallUsers, getaUser, deleteaUser, updateaUser};
+// Block user
+const blockUser = asyncHandler(async (req, res) => {
+  const {id} = req.params
+  validateMongoDbId(id)
+  try {
+    const block = await User.findByIdAndUpdate(
+      id,
+      {
+        isBlocked: true
+      },
+      {
+        new: true
+      }
+    )
+    res.json({
+      message:'User blocked'
+    })
+  } catch (error) {
+    throw new Error(error)
+  }
+})
+
+// Unblock user
+const unblockUser = asyncHandler(async (req, res) => {
+  const {id} = req.params
+  validateMongoDbId(id)
+  try {
+    const unblock = await User.findByIdAndUpdate(
+      id,
+      {
+        isBlocked: false
+      },
+      {
+        new: true
+      }
+    )
+    res.json({
+      message:'User unblocked'
+    })
+  } catch (error) {
+    throw new Error(error)
+  }
+
+})
+
+module.exports = { 
+  createUser,
+  loginUserCtrl,
+  getallUsers,
+  getaUser,
+  deleteaUser,
+  updateaUser,
+  blockUser,
+  unblockUser
+};
