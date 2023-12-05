@@ -6,6 +6,7 @@ const PORT = process.env.PORT || 4000
 const authRoute = require('./routes/authRoutes')
 const { notFound, errorHandler } = require('./middlewares/errorHandler')
 const cookieParser = require('cookie-parser')
+const productRoute = require('./routes/productRoute')
 // const bodyParser = require('body-parser')
 connectDB()
 
@@ -21,6 +22,7 @@ app.use(express.urlencoded({ extended: false}))
 app.use(cookieParser())
 
 app.use('/api/user', authRoute)
+app.use('/api/product', productRoute)
 
 
 // after authroute we pass in the middleware
