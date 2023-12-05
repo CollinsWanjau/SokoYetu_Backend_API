@@ -10,7 +10,9 @@ const {
     deleteaUser,    // Function to delete a user by ID
     updateaUser,     // Function to update a user by ID
     blockUser,
-    unblockUser
+    unblockUser,
+    handleRefreshToken,
+    logout
 } = require('../controller/userCtrl')
 
 const { authMiddleware, isAdmin} = require('../middlewares/authMiddleware')
@@ -37,7 +39,8 @@ router.post('/login', loginUserCtrl)
  * @name getallUsers
  */
 router.get('/all-users', getallUsers)
-
+router.get("/refresh", handleRefreshToken)
+router.get('/logout', logout)
 /**
  * GET route to retrieve a specific user by ID.
  * @route GET /:id
@@ -80,5 +83,8 @@ router.put("/block-user/:id", authMiddleware, isAdmin, blockUser)
  * @returns {void}
  */
 router.put("/unblock-user/:id", authMiddleware, isAdmin, unblockUser)
+
+
+
 // Exporting the router for use in other parts of the application
 module.exports = router
