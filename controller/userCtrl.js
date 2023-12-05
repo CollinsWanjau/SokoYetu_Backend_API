@@ -47,7 +47,13 @@ const loginUserCtrl = asyncHandler(async (req, res) => {
   // Validate the user's password
   if(findUser && (await findUser.isPasswordMatched(password))) {
 
+    // This function creates a unique token that can be used to obtain new 
+    // access tokens when the old ones expire. The function returns the 
+    // refresh token as a promise
     const refreshToken = await generateRefreshToken(findUser?._id)
+
+    // a way to update a document in a MongoDB database.
+    // It passes the user’s ID, the new refresh token, and an option to return the updated document as arguments
     const updateUser = await User.findByIdAndUpdate(
       findUser.id,
       {
@@ -55,8 +61,9 @@ const loginUserCtrl = asyncHandler(async (req, res) => {
       },
       { new: true }
     )
+
     res.cookie('refreshToken', refreshToken, {
-      httpOnly: true,
+      httpOnly: true, // means it cannot be accessed by client-side JavaScript
       maxAge:72 * 60 * 60 * 1000
     })
     // If the password is correct, send a JSON response with user information and a token
