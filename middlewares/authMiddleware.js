@@ -71,7 +71,7 @@ const isAdmin = asyncHandler(async (req, res, next) => {
     const { email } = req.user
 
     // Check if the user with the provided email exists in the database
-    const adminUser = await User.findOne(email)
+    const adminUser = await User.findOne({email: email})
 
     // Verify if the user is an admin
     if (adminUser.role !== 'admin') {
