@@ -53,23 +53,31 @@ const getaProduct = asyncHandler(async (req, res) => {
     }
 })
 
+/**
+ * Handler function to get all products based on query parameters.
+ * @param {object} req - Express request object.
+ * @param {object} res - Express response object.
+ * @returns {Promise<void>} - Asynchronous function without a direct return.
+ */
 const getAllProduct = asyncHandler(async (req, res) => {
     // console.log(req.query)
     try {
+        // Extract query parameters from the request
         const queryObj = {...req.query}
+
+        // Exclude certain fields from the query
         const excludeFields = ['page', 'sort', 'limit', 'fields']
         excludeFields.forEach((el) => delete queryObj[el])
-        console.log(queryObj)
+
+        // Convert the query object to a string and replace specific keywords
         let queryStr = JSON.stringify(queryObj)
         queryStr = queryStr.replace(/\b(gte|gt|lte|lt)\b/g, (match) => `$${match}`)
-        // console.log(JSON.parse(queryStr))
 
+        // Parse the modified query string and execute the query
         const query = Product.find(JSON.parse(queryStr))
         const product = await query
-//         const getAllProducts = await Product.where('category').equals(
-//             req.query.category
-// )
-        
+
+        // Send the resulting products as a JSON response
         res.json(product)
     } catch(error) {
         throw new Error(error)
