@@ -12,7 +12,8 @@ const {
     blockUser,
     unblockUser,
     handleRefreshToken,
-    logout
+    logout,
+    updatePassword
 } = require('../controller/userCtrl')
 
 const { authMiddleware, isAdmin} = require('../middlewares/authMiddleware')
@@ -24,6 +25,7 @@ const { authMiddleware, isAdmin} = require('../middlewares/authMiddleware')
  */
 router.post('/register', createUser)
 
+router.put('/password', authMiddleware, updatePassword)
 /**
  * POST route to handle user login.
  * @route POST /login
