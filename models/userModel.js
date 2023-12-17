@@ -1,5 +1,6 @@
 const { mongoose } = require('mongoose'); // Erase if already required
 const bcrypt = require('bcrypt')
+const crypto = require('crypto')
 // Declare the Schema of the Mongo model
 var userSchema = new mongoose.Schema({
     firstname:{
@@ -69,13 +70,23 @@ userSchema.methods.isPasswordMatched = async function(enteredPassword) {
     return bcrypt.compare(enteredPassword, this.password)
 }
 
+/**
+ * Creates a password reset token and updates the user instance with token and expiration.
+ * @returns {string} The generated password reset token.
+ * @throws {Error} If there is an issue generating the token or updating the user instance.
+ */
 userSchema.methods.createPasswordResetToken = async function () {
+    // Generate a random 32-byte token using crypto
     const resettoken = crypto.randomBytes(32).toString('hex')
+
+    // Hash the reset token using SHA-256 algorithm
     this.passwordResetToken = crypto
       .createHash('sha256')
       .update(resettoken)
       .digest('hex')
-    this.passwordResetExpires = Date.now() + 30 * 60 * 1000 // 10 minutes
+    
+    // Set the password reset expiration time to 30 minutes from the current time
+    this.passwordResetExpires = Date.now() + 30 * 60 * 1000
     return resettoken
 }
 
