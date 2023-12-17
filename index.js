@@ -7,6 +7,7 @@ const authRoute = require('./routes/authRoutes')
 const { notFound, errorHandler } = require('./middlewares/errorHandler')
 const cookieParser = require('cookie-parser')
 const productRoute = require('./routes/productRoute')
+const blogRouter = require('./routes/blogRoutes')
 const morgan = require('morgan')
 // const bodyParser = require('body-parser')
 connectDB()
@@ -22,6 +23,7 @@ app.use(cookieParser())
 
 app.use('/api/user', authRoute)
 app.use('/api/product', productRoute)
+app.use('/api/blog', blogRouter)
 
 
 // after authroute we pass in the middleware
