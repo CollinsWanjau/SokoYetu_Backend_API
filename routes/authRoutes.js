@@ -13,10 +13,13 @@ const {
     unblockUser,
     handleRefreshToken,
     logout,
-    updatePassword
+    updatePassword,
+    forgotPassowrdToken,
+    resetPassword
 } = require('../controller/userCtrl')
 
 const { authMiddleware, isAdmin} = require('../middlewares/authMiddleware')
+const { reset } = require('nodemon')
 /**
  * POST route to register a new user.
  * @route POST /register
@@ -24,8 +27,9 @@ const { authMiddleware, isAdmin} = require('../middlewares/authMiddleware')
  * @name createUser
  */
 router.post('/register', createUser)
-
+router.post('/forgot-password-token', forgotPassowrdToken)
 router.put('/password', authMiddleware, updatePassword)
+router.put('/reset-password/:token', resetPassword)
 /**
  * POST route to handle user login.
  * @route POST /login
