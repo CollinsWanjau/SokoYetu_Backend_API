@@ -1,6 +1,7 @@
 const Product = require('../models/productModel');
 const asyncHandler = require('express-async-handler');
 const slugify = require('slugify')
+const User = require('../models/userModel')
 const createProduct = asyncHandler(async (req, res) => {
   try {
     if (req.body.title) {
@@ -116,5 +117,99 @@ const getAllProduct = asyncHandler(async (req, res) => {
     }
 })
 
+/**
+ * Adds or removes a product from the user's wishlist.
+ * @param {Object} req - Express request object containing user information and product ID.
+ * @param {Object} res - Express response object.
+ * @returns {Object} - Updated user object with the modified wishlist.
+ */
+const addToWishlist = asyncHandler(async (req, res) => {
+    const { _id } = req.user
+    const { prodId } = req.body
+    try {
+        const user = await User.findById(_id)
 
-module.exports = { createProduct, getaProduct, getAllProduct, updateProduct, deleteProduct};
+        // Check if the product is already in the wishlist
+        const alreadyadded = user.wishlist.find((id) => id.toString() === prodId)
+        if (alreadyadded) {
+            // If already added, remove the product from the wishlist
+            let user = await User.findOneAndUpdate(
+                _id,
+                {
+                    $pull: { wishlist: prodId}
+                },
+                { new: true }
+            )
+            res.json(user)
+        } else {
+            // If not added, add the product to the wishlist
+            let user = await User.findOneAndUpdate(
+                _id,
+                {
+                    $push: { wishlist: prodId}
+                },
+                { new: true }
+            )
+            res.json(user)
+        }
+    } catch(error) { 
+        throw new Error
+    }
+})
+
+const rating = asyncHandler(async (req, res) => {
+    const { _id } = req.user
+    const { star, prodId, comment} = req.body
+    try {
+        const product = await Product.findById(prodId)
+        let alreadyRated = product.ratings.find((userId) => userId.postedby.toString() === _id.toString())
+        if (alreadyRated) {
+            const updateRating = await Product.updateOne(
+                {
+                    ratings: { $elemMatch: alreadyRated}
+                },
+                {
+                    $set: { "ratings.$.star": star, "ratings.$.comment": comment}
+                },
+                {
+                    new: true
+                }
+            )
+            // res.json(updateRating)
+        } else {
+            const rateProduct = await Product.findByIdAndUpdate(
+                prodId,
+                {
+                    $push: {
+                        ratings: {
+                            star: star,
+                            comment: comment,
+                            postedby: _id
+                        },
+                    },
+                    
+                },
+                {
+                    new: true
+                },
+                )
+                // res.json(rateProduct)
+        }
+        const getallratings = await Product.findById(prodId)
+        let totalrating = getallratings.ratings.length
+        let ratingsum = getallratings.ratings
+            .map((item) => item.star)
+            .reduce((prev, curr) => prev + curr, 0)
+        let actualRating = Math.round(ratingsum / totalrating)
+        let finalProduct = await Product.findByIdAndUpdate(prodId, {
+            totalRatings: totalrating,
+            averageRating: actualRating
+        }, { new: true })
+        res.json(finalProduct)
+    } catch(error) {
+        throw new Error
+    }
+    
+
+})
+module.exports = { createProduct, getaProduct, getAllProduct, updateProduct, deleteProduct, addToWishlist, rating};
