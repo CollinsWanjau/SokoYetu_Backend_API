@@ -39,7 +39,7 @@ var userSchema = new mongoose.Schema({
     },
     // Address
     address: [{ type: mongoose.Schema.ObjectId, ref: "Address"}],
-    // Wishlist
+    // Wishlist Schema
     wishlist: [{ type: mongoose.Schema.ObjectId, ref: "Product"}],
     // Refresh token
     refreshToken: {
