@@ -2,8 +2,8 @@ const Blog = require('../models/blogModels')
 const mongoose = require('mongoose');
 const User = mongoose.model('User');
 const asyncHandler = require('express-async-handler')
-const validateMongoDbId = require('../utils/validateMongoId')
-
+const validateMongoId = require('../utils/validateMongoId')
+const cloudinaryUploadImg = require('../utils/cloudinary')
 /**
  * Create a new blog post.
  * @param {Object} req - Express request object.
@@ -21,7 +21,7 @@ const createBlog = asyncHandler(async (req, res) => {
 
 const updateBlog = asyncHandler(async (req, res) => {
     const {id} = req.params
-    validateMongoDbId(id)
+    validateMongoId(id)
     try{
         const updateBlog = await Blog.findByIdAndUpdate(id, req.body, {
             new: true
@@ -34,7 +34,7 @@ const updateBlog = asyncHandler(async (req, res) => {
 
 const getBlog = asyncHandler(async (req, res) => {
     const {id} = req.params
-    validateMongoDbId(id)
+    validateMongoId(id)
     try{
         const getBlog = await Blog.findById(id)
             .populate('likes')
@@ -62,7 +62,7 @@ const getAllBlogs = asyncHandler(async (req, res) => {
 
 const deleteBlog = asyncHandler(async (req, res) => {
     const {id} = req.params
-    validateMongoDbId(id)
+    validateMongoId(id)
     try{
         const deletedBlog = await Blog.findByIdAndDelete(id)
         res.json(deletedBlog)
@@ -73,7 +73,7 @@ const deleteBlog = asyncHandler(async (req, res) => {
 
 const likeBlog = asyncHandler(async (req, res) => {
     const { blogId } = req.body
-    validateMongoDbId(blogId)
+    validateMongoId(blogId)
 
     // fetches the blog post with the given blogId from the database.
     const blog = await Blog.findById(blogId)
@@ -126,7 +126,7 @@ const likeBlog = asyncHandler(async (req, res) => {
 
 const disLikeBlog = asyncHandler(async (req, res) => {
     const { blogId } = req.body
-    validateMongoDbId(blogId)
+    validateMongoId(blogId)
 
     // fetches the blog post with the given blogId from the database.
     const blog = await Blog.findById(blogId)
@@ -176,4 +176,52 @@ const disLikeBlog = asyncHandler(async (req, res) => {
         res.json(blog)
     }
 })
-module.exports = { createBlog, updateBlog, getBlog, getAllBlogs, deleteBlog, likeBlog, disLikeBlog}
+
+const uploadImages = asyncHandler(async (req, res) => {
+    const { id } = req.params.id
+    validateMongoId(id)
+    // logs the files property of the request object.When using middleware like
+    // Multer for handling file uploads, the uploaded files are available in req.files
+    console.log(req.files)
+    try {
+        const uploader = (path) => cloudinaryUploadImg(path, 'images')
+        const url = []
+        const files = req.files
+        // for (const file of files) {
+        //     const { path } = file
+        //     const newpath = await uploader(path)
+        //     console.log(newpath)
+        //     url.push(newpath)
+        //     fs.unlinkSync(path)
+        // }
+        await Promise.all(files.map(async (file) => {
+            const { path } = file;
+            const newpath = await uploader(path);
+            url.push(newpath);
+            fs.unlinkSync(path);
+        }));
+        const findBlog = await Blog.findByIdAndUpdate(
+            id,
+            {
+                images: url.map((file) => {
+                    return file
+                })
+            },
+            { new: true },
+        )
+        if (!findBlog) {
+            return res.status(404).json({ message: 'No blog found with this ID' });
+        }
+        res.json({
+            message: 'Images uploaded successfully',
+            updatedBlog: findBlog,
+            images: url
+        })
+    } catch(error) {
+        console.error(error.message)
+        res.status(500).json({ message: 'No blog found with this ID'})
+        throw new Error(error.message)
+        
+    }
+})
+module.exports = { createBlog, updateBlog, getBlog, getAllBlogs, deleteBlog, likeBlog, disLikeBlog, uploadImages}
