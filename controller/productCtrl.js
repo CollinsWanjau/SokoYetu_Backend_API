@@ -2,6 +2,9 @@ const Product = require('../models/productModel');
 const asyncHandler = require('express-async-handler');
 const slugify = require('slugify')
 const User = require('../models/userModel')
+const validateMongoId = require('../utils/validateMongoId');
+const cloudinaryUploadImg = require('../utils/cloudinary');
+const fs = require('fs')
 const createProduct = asyncHandler(async (req, res) => {
   try {
     if (req.body.title) {
@@ -212,4 +215,53 @@ const rating = asyncHandler(async (req, res) => {
     
 
 })
-module.exports = { createProduct, getaProduct, getAllProduct, updateProduct, deleteProduct, addToWishlist, rating};
+
+/**
+ * @async
+ * @function uploadImages
+ * @description This function uploads multiple images to Cloudinary and updates a product with the URLs of the uploaded images.
+ * @param {Object} req - Express request object. The request should contain the product id in the params and the files to be uploaded in the files property.
+ * @param {Object} res - Express response object.
+ * @throws Will throw an error if the upload or the database update fails.
+ * @returns {Object} The updated product.
+ * 
+ * @example
+ * 
+ * // POST /uploadImages/:id
+ * // Request body contains the files to be uploaded
+ * // Response: the updated product
+ */
+const uploadImages = asyncHandler(async (req, res) => {
+    const { id } = req.params
+    validateMongoId(id)
+    // logs the files property of the request object.When using middleware like
+    // Multer for handling file uploads, the uploaded files are available in req.files
+    console.log(req.files)
+    try {
+        const uploader = (path) => cloudinaryUploadImg(path, 'images')
+        const url = []
+        const files = req.files
+        for (const file of files) {
+            const { path } = file
+            const newpath = await uploader(path)
+            console.log(newpath)
+            url.push(newpath)
+            // synchronously deletes a file from the file system.
+            fs.unlinkSync(path)
+        }
+        const findProduct = await Product.findByIdAndUpdate(
+            id,
+            {
+                images: url.map((file) => {
+                    return file
+                })
+            },
+            { new: true },
+        )
+        res.json(findProduct)
+    } catch(error) {
+        throw new Error(error.message)
+    }
+})
+
+module.exports = { createProduct, getaProduct, getAllProduct, updateProduct, deleteProduct, addToWishlist, rating, uploadImages};
