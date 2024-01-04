@@ -15,7 +15,14 @@ const {
     logout,
     updatePassword,
     forgotPassowrdToken,
-    resetPassword
+    resetPassword,
+    loginAdminCtrl,
+    getWishlist,
+    saveAddress,
+    userCart,
+    getUserCart,
+    emptyCart,
+    applyCoupon
 } = require('../controller/userCtrl')
 
 const { authMiddleware, isAdmin} = require('../middlewares/authMiddleware')
@@ -37,7 +44,9 @@ router.put('/reset-password/:token', resetPassword)
  * @name loginUserCtrl
  */
 router.post('/login', loginUserCtrl)
-
+router.post('/admin-login', loginAdminCtrl)
+router.post('/cart', authMiddleware, userCart)
+router.post('/cart/applycoupon', authMiddleware, applyCoupon)
 /**
  * GET route to retrieve all users.
  * @route GET /all-users
@@ -47,6 +56,9 @@ router.post('/login', loginUserCtrl)
 router.get('/all-users', getallUsers)
 router.get("/refresh", handleRefreshToken)
 router.get('/logout', logout)
+router.get('/wishlist', authMiddleware, getWishlist)
+router.get('/cart', authMiddleware, getUserCart)
+// router.get('/:id/wishlist', authMiddleware, getWishlist)
 /**
  * GET route to retrieve a specific user by ID.
  * @route GET /:id
@@ -55,7 +67,7 @@ router.get('/logout', logout)
  * @param {string} id - The ID of the user to retrieve.
  */
 router.get('/:id', getaUser, isAdmin, authMiddleware)
-
+router.delete('/empty-cart', authMiddleware, emptyCart)
 /**
  * DELETE route to delete a user by ID.
  * @route DELETE /:id
@@ -64,7 +76,7 @@ router.get('/:id', getaUser, isAdmin, authMiddleware)
  * @param {string} id - The ID of the user to delete.
  */
 router.delete('/:id', deleteaUser)
-
+router.put("/save-address", authMiddleware, saveAddress)
 /**
  * PUT route to update a user by ID.
  * @route PUT /:id
