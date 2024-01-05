@@ -1,4 +1,9 @@
+const Product = require('../models/productModel')
+const Cart = require('../models/cartModel')
+const Coupon = require('../models/couponModel')
+const Order = require('../models/orderModel')
 const { generateToken } = require('../config/jwtToken');
+const uniqid = require('uniqid');
 const User = require('../models/userModel');
 const asyncHandler = require('express-async-handler');
 const validateMongoId = require('../utils/validateMongoId');
@@ -7,6 +12,7 @@ const jwt = require('jsonwebtoken');
 const sendEmail = require('./emailCtrl');
 const crypto = require('crypto');
 const { hash } = require('bcrypt');
+
 /**
  * createUser - Async function to create a new user.
  *
@@ -45,12 +51,9 @@ const loginUserCtrl = asyncHandler(async (req, res) => {
 
   // check if user exists
   const findUser = await User.findOne({ email });
-
   // Validate the user's password
   if (findUser && (await findUser.isPasswordMatched(password))) {
     // This function creates a unique token that can be used to obtain new
-    // access tokens when the old ones expire. The function returns the
-    // refresh token as a promise
     const refreshToken = await generateRefreshToken(findUser?._id);
 
     // a way to update a document in a MongoDB database.
@@ -61,8 +64,7 @@ const loginUserCtrl = asyncHandler(async (req, res) => {
         refreshToken
       },
       { new: true }
-    );
-
+    )
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true, // means it cannot be accessed by client-side JavaScript
       maxAge: 72 * 60 * 60 * 1000
@@ -75,9 +77,47 @@ const loginUserCtrl = asyncHandler(async (req, res) => {
       email: findUser?.email,
       mobile: findUser?.mobile,
       token: generateToken(findUser?._id)
-    });
+    })
   } else {
-    // If the password is incorrect or the user doesn't exist, throw an error
+    throw new Error('Invalid credentials');
+  }
+});
+
+const loginAdminCtrl = asyncHandler(async (req, res) => {
+  // Extract email and password from the request body
+  const { email, password } = req.body;
+
+  // check if user exists
+  const findAdmin = await User.findOne({ email });
+  if (findAdmin.role !== 'admin') throw new Error('Not authorised')
+  // Validate the user's password
+  if (findAdmin && (await findAdmin.isPasswordMatched(password))) {
+    // This function creates a unique token that can be used to obtain new
+    const refreshToken = await generateRefreshToken(findAdmin?._id);
+
+    // a way to update a document in a MongoDB database.
+    // It passes the user’s ID, the new refresh token, and an option to return the updated document as arguments
+    const updateUser = await User.findByIdAndUpdate(
+      findAdmin.id,
+      {
+        refreshToken
+      },
+      { new: true }
+    )
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true, // means it cannot be accessed by client-side JavaScript
+      maxAge: 72 * 60 * 60 * 1000
+    });
+    // If the password is correct, send a JSON response with user information and a token
+    res.json({
+      _id: findAdmin?._id,
+      firstname: findAdmin?.firstname,
+      lastname: findAdmin?.lastname,
+      email: findAdmin?.email,
+      mobile: findAdmin?.mobile,
+      token: generateToken(findAdmin?._id)
+    })
+  } else {
     throw new Error('Invalid credentials');
   }
 });
@@ -167,6 +207,22 @@ const updateaUser = asyncHandler(async (req, res) => {
     throw new Error(error);
   }
 });
+
+// save user address
+
+const saveAddress = asyncHandler(async (req, res) => {
+  const { _id } = req.user;
+  validateMongoId(_id);
+  try {
+    const updateUser = await User.findByIdAndUpdate(_id, {
+      address: req?.body?.address
+
+    }, { new: true });
+    res.json(updateUser);
+  } catch (error) {
+    throw new Error(error);
+  }
+})
 
 /**
  * getallUsers - Route handler function to retrieve all users.
@@ -316,6 +372,198 @@ const resetPassword = asyncHandler(async (req, res) => {
   await user.save()
   res.json(user)
 })
+
+const getWishlist = asyncHandler(async (req, res) => {
+  const { _id } = req.user
+  validateMongoId(_id)
+  try {
+    const findUser = await User.findById(_id).populate('wishlist')
+    if (!findUser) {
+      res.status(404).json({ message: "User not found" });
+      return;
+    }
+    res.status(200).json(findUser)
+  } catch(error) {
+    throw new Error(error)
+  }
+})
+
+const userCart = asyncHandler(async (req, res) => {
+  const { cart } = req.body
+  const { _id } = req.user
+  validateMongoId(_id)
+  try {
+    let products = []
+    const user = await User.findById(_id)
+    // check if user already have product in cart
+    const alreadyExistCart = await Cart.findOne({ orderby: user._id })
+    if (alreadyExistCart) {
+      alreadyExistCart.remove()
+    }
+
+    // For each element in the cart array, we create a new object with
+    // properties product, count, and color
+    for (let i = 0; i < cart.length; i++) {
+      let object = {}
+      object.product = cart[i]._id
+      object.count = cart[i].count
+      object.color = cart[i].color
+
+      // select method to specify that we only want to retrieve the price property
+      // of the product.
+      // exec method to execute the query and retrieve the price of the product.
+      let getPrice = await Product.findById(cart[i]._id).select('price').exec()
+      object.price = getPrice.price
+      products.push(object)
+    }
+    let cartTotal = 0
+    for (let i = 0; i < products.length; i++) {
+      cartTotal = cartTotal + products[i].price * products[i].count
+    }
+    // console.log(products, cartTotal)
+    let newCart = await new Cart({
+      products,
+      cartTotal,
+      orderby: user?._id
+    }).save()
+    res.json(newCart)
+  } catch(error) {
+    throw new Error(error)
+  }
+})
+
+const getUserCart = asyncHandler(async (req, res) => {
+  const {_id} = req.user
+  validateMongoId(_id)
+  try {
+    const cart = await Cart.findOne({ orderby: _id}).populate('products.product')
+    res.json(cart)
+  } catch(error) {
+    throw new Error(error)
+  }
+})
+
+
+const emptyCart = asyncHandler(async (req, res) => {
+  const {_id} = req.user
+  validateMongoId(_id)
+  try {
+    const user = await User.findOne({ _id })
+    const cart = await Cart.findOneAndDelete({ orderby: user._id})
+    res.json(cart)
+  } catch(error) {
+    throw new Error(error)
+  }
+})
+
+const applyCoupon = asyncHandler(async (req, res) => {
+  const { coupon } = req.body
+  const { _id } = req.user
+  const validCoupon = await Coupon.findOne({ name: coupon })
+  // console.log(validCoupon)
+  if (validCoupon === null) {
+    throw new Error('Invalid Coupon')
+  }
+  const user = await User.findOne({ _id })
+  let { cartTotal } = await Cart.findOne({
+    orderby: user._id,
+  }).populate('products.product')
+  let totalAfterDiscount = (
+    cartTotal - (cartTotal * validCoupon.discount) / 100).toFixed(2)
+    await Cart.findOneAndUpdate(
+      { orderby: user._id },
+      { totalAfterDiscount },
+      { new: true }
+    )
+    res.json(totalAfterDiscount)
+})
+
+const createOrder = asyncHandler(async (req, res) => {
+  const { COD, couponApplied } = req.body
+  const { _id } = req.user
+  validateMongoId(_id)
+  try {
+    if (!COD) throw new Error('Create cash order failed')
+    const user = await User.findById(_id)
+    let userCart = await Cart.findOne({ orderby: user._id })
+    let finalAmount = 0
+
+    // checks if a coupon has been applied and if totalAfterDiscount is available in the user's cart.
+    // If both conditions are true, it sets finalAmount to totalAfterDiscount
+    if(couponApplied && userCart.totalAfterDiscount) {
+      finalAmount = userCart.totalAfterDiscount
+    } else {
+      finalAmount = userCart.cartTotal
+    }
+
+    let newOrder = await new Order({
+      products: userCart.products,
+      paymentIntent: {
+        id: uniqid(),
+        method: "COD",
+        amount: finalAmount,
+        status: "Cash on delivery",
+        created: Date.now(),
+        currency: "usd"
+      },
+      orderby: user._id,
+      orderStatus: "Cash on delivery"
+    }).save()
+
+    // For each item in userCart.products, it creates an updateOne operation
+    // The filter property specifies the condition for choosing the document to update. It selects the document where _id equals item.product._id.
+    // The update property specifies the modifications to be made. It uses the $inc operator to decrement the quantity field by item.count and increment the sold field by item.count
+    let update = userCart.products.map((item) => {
+      return {
+        updateOne: {
+          filter: { _id: item.product._id},
+          update: { $inc: { quantity: -item.count, sold: +item.count }}
+        }
+      }
+    })
+
+    // The resulting update array can be used with MongoDB's bulkWrite method to perform all the updates in a single operation.
+    const updated = await Product.bulkWrite(update, {})
+    res.json({ message: 'success' })
+  } catch(error) {
+    throw new Error(error)
+  }
+})
+
+const getOrders = asyncHandler(async (req, res) => {
+  const { _id } = req.user
+  validateMongoId(_id)
+  try {
+    const userorders = await Order.find({ orderby: _id })
+      .populate('products.product')
+      // .populate('orderby')
+      .exec()
+    res.json(userorders)
+  } catch(error) {
+    throw new Error(error)
+  }
+})
+
+const updateOrderStatus = asyncHandler(async (req, res) => {
+  const { status } = req.body
+  const { id } = req.params
+  validateMongoId(id)
+  try {
+    const updateorderStatus = await Order.findByIdAndUpdate(
+      id,
+      {
+        orderStatus: status,
+        paymentIntent: {
+          status: status,
+        },
+      },
+      { new: true }
+    )
+    res.json(updateorderStatus)
+  } catch (error) {
+    throw new Error(error)
+  }
+})
 module.exports = {
   createUser,
   loginUserCtrl,
@@ -329,5 +577,15 @@ module.exports = {
   logout,
   updatePassword,
   forgotPassowrdToken,
-  resetPassword
+  resetPassword,
+  loginAdminCtrl,
+  getWishlist,
+  saveAddress,
+  userCart,
+  getUserCart,
+  emptyCart,
+  applyCoupon,
+  createOrder,
+  getOrders,
+  updateOrderStatus
 };
