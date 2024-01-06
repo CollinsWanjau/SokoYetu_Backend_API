@@ -22,7 +22,10 @@ const {
     userCart,
     getUserCart,
     emptyCart,
-    applyCoupon
+    applyCoupon,
+    createOrder,
+    getOrders,
+    updateOrderStatus
 } = require('../controller/userCtrl')
 
 const { authMiddleware, isAdmin} = require('../middlewares/authMiddleware')
@@ -47,6 +50,7 @@ router.post('/login', loginUserCtrl)
 router.post('/admin-login', loginAdminCtrl)
 router.post('/cart', authMiddleware, userCart)
 router.post('/cart/applycoupon', authMiddleware, applyCoupon)
+router.post('/cart/cash-order', authMiddleware, createOrder)
 /**
  * GET route to retrieve all users.
  * @route GET /all-users
@@ -54,6 +58,7 @@ router.post('/cart/applycoupon', authMiddleware, applyCoupon)
  * @name getallUsers
  */
 router.get('/all-users', getallUsers)
+router.get('/get-orders', authMiddleware,getOrders)
 router.get("/refresh", handleRefreshToken)
 router.get('/logout', logout)
 router.get('/wishlist', authMiddleware, getWishlist)
@@ -76,6 +81,12 @@ router.delete('/empty-cart', authMiddleware, emptyCart)
  * @param {string} id - The ID of the user to delete.
  */
 router.delete('/:id', deleteaUser)
+router.put(
+    '/order/update-order/:id',
+    authMiddleware,
+    isAdmin,
+    updateOrderStatus
+)
 router.put("/save-address", authMiddleware, saveAddress)
 /**
  * PUT route to update a user by ID.
